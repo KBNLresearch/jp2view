@@ -1,5 +1,8 @@
 package nl.kb.jp2;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class JPEG2000Image {
 
     public static final int HEADER_FAIL = 0;
@@ -71,10 +74,33 @@ public class JPEG2000Image {
         return reduce(tileH, reduction);
     }
 
-
     public String getFilename() {
         return filename;
     }
+
+    private List<Integer> filterTilesDim(int start, int finish, int tiles, int tsiz, int reduction) {
+        int siz = reduce(tsiz, reduction);
+        List<Integer> indices = new ArrayList<Integer>();
+        for(int i = 0; i < tiles; ++i) {
+            int cur1 = i * siz;
+            int cur2 = (i+1) * siz;
+            if( (start >= cur1 && start <= cur2) ||
+                (finish >= cur1 && finish <= cur2) ||
+                (start <= cur1 && finish >= cur2)) {
+                indices.add(i);
+            }
+        }
+        return indices;
+    }
+
+    public List<Integer> filterTilesX(int x, int w, int reduction) {
+        return filterTilesDim(x, x + w, tilesX, tileW, reduction);
+    }
+
+    public List<Integer> filterTilesY(int y, int h, int reduction) {
+        return filterTilesDim(y, y + h, tilesY, tileH, reduction);
+    }
+
 
     @Override
     public String toString() {
