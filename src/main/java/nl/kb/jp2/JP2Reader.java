@@ -32,11 +32,11 @@ public class JP2Reader {
         }
     }
 
-    private static native int[] getJp2Specs(String filename);
-    private static native int[] getTile(String filename, int tileIndex, int reduction, int[][] pixels);
+    private native int[] getJp2Specs(String filename);
+    private native int[] getTile(String filename, int tileIndex, int reduction, int[][] pixels);
 
 
-    private static class TileToBufferJob extends Thread {
+    private class TileToBufferJob implements Runnable {
         private BufferedImage img;
         private JPEG2000Image image;
         private int reduction;
@@ -70,20 +70,21 @@ public class JP2Reader {
     }
 
 
-    public static BufferedImage getFullImage(JPEG2000Image image, int reduction) {
+    public BufferedImage getFullImage(JPEG2000Image image, int reduction) {
         if(reduction < 0) { reduction = 0; }
         if(reduction > image.getMaxReduction()) { reduction = image.getMaxReduction(); }
 
         BufferedImage img = new BufferedImage(image.getWidth(reduction), image.getHeight(reduction), BufferedImage.TYPE_INT_RGB);
-        List<TileToBufferJob> openThreads = new ArrayList<TileToBufferJob>();
+        List<Thread> openThreads = new ArrayList<Thread>();
         for(int tileX = 0; tileX < image.getTilesX(); ++tileX) {
             int imageX = tileX * image.getTileW(reduction);
             for(int tileY = 0; tileY < image.getTilesY(); ++tileY) {
                 int imageY = tileY * image.getTileH(reduction);
                 int tileIndex = (image.getTilesX() * tileY) + tileX;
                 TileToBufferJob job = new TileToBufferJob(image, img, reduction, tileIndex, imageX, imageY);
-                job.start();
-                openThreads.add(job);
+                Thread t = new Thread(job);
+                t.start();
+                openThreads.add(t);
                 if(openThreads.size() >= MAX_THREADS_PER_JOB) {
                     try {
                         openThreads.remove(0).join();
@@ -91,9 +92,9 @@ public class JP2Reader {
                 }
             }
         }
-        for(TileToBufferJob job : openThreads) {
+        for(Thread t : openThreads) {
             try {
-                job.join();
+                t.join();
             } catch (InterruptedException e) {
 
             }
@@ -105,10 +106,12 @@ public class JP2Reader {
     public static void main(String args[]) {
         String filename = args[1];
         long start = new Date().getTime();
-        JPEG2000Image image = new JPEG2000Image(filename, getJp2Specs(filename));
+        JP2Reader reader = new JP2Reader();
+
+        JPEG2000Image image = new JPEG2000Image(filename, reader.getJp2Specs(filename));
         if(image.headerLoaded()) {
             System.out.println(image);
-            BufferedImage outImg = getFullImage(image, Integer.parseInt(args[2]));
+            BufferedImage outImg = reader.getFullImage(image, Integer.parseInt(args[2]));
             try {
                 ImageIO.write(outImg, "jpg", new File("test.jpg"));
             } catch(IOException e) {
