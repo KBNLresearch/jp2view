@@ -167,7 +167,7 @@ public class JP2Reader {
             }
 
             start = new Date().getTime();
-            BufferedImage outImg1 = reader.getRegion(image, 2, 250, 135, 850, 400);
+            BufferedImage outImg1 = reader.getRegion(image, 1, 250, 135, 850, 400);
             System.out.println("Get region ms: " + ((new Date().getTime()) - start));
             try {
                 ImageIO.write(outImg1, "jpg", new File("test_region.jpg"));
