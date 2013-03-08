@@ -34,4 +34,4 @@ Build this project
 
 6. java -jar jp2-0.1.0-jar-with-dependencies.jar nl.kb.JP2Reader ../res/balloon.jp2 4
 
-If all went well, there is now a test.jpg file in the target dir.
+If all went well, there is now a test.jpg file and a test_region.jpg file in the target dir.
