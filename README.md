@@ -34,4 +34,9 @@ Build this project
 
 6. java -jar jp2-0.1.0-jar-with-dependencies.jar nl.kb.JP2Reader ../res/balloon.jp2 4
 
-If all went well, there is now a test.jpg file and a test_region.jpg file in the target dir.
+If all went well, there are now 5 jpeg files in your target directory:
+- test.jpg file (full res balloon)
+- test_region.jpg
+- test_region_scaled_up.jpg
+- test_region_scaled_down.jpg
+- test_full_scaled.jpg
