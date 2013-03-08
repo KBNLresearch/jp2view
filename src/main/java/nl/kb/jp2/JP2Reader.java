@@ -1,3 +1,34 @@
+/**
+ * Copyright (c) 2013, Koninklijke Bibliotheek - Nationale bibliotheek van Nederland
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above copyright notice, this
+ *     list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright notice,
+ *     this list of conditions and the following disclaimer in the documentation
+ *     and/or other materials provided with the distribution.
+ *   * Neither the name of the Koninklijke Bibliotheek nor the names of its contributors
+ *     may be used to endorse or promote products derived from this software without
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 package nl.kb.jp2;
 
 import org.apache.commons.io.IOUtils;
@@ -76,8 +107,8 @@ public class JP2Reader {
             int[] tileSpecs = getTile(image.getFilename(), tileIndex, reduction, tileRBG);
             int startX = subX > 0 ? subX : 0;
             int startY = subY > 0 ? subY : 0;
-            int endX = subX1 > 0 ? subX1 : tileSpecs[1];
-            int endY = subY1 > 0 ? subY1 : tileSpecs[2];
+            int endX = subX1 > 0 ? (subX1 > tileSpecs[1] ? tileSpecs[1] : subX1) : tileSpecs[1];
+            int endY = subY1 > 0 ? (subY1 > tileSpecs[2] ? tileSpecs[2] : subY1) : tileSpecs[2];
             int outLeft = imageX - realX < 0 ? 0 : imageX - realX;
             int outTop = imageY - realY < 0 ? 0 : imageY - realY;
 
@@ -85,9 +116,16 @@ public class JP2Reader {
                 for(int x = startX; x < endX; ++x) {
                     int[] rgb = new int[3];
                     int i = y * tileSpecs[1] + x;
-                    rgb[0] = tileRBG[0][i];
-                    rgb[1] = tileRBG[1][i];
-                    rgb[2] = tileRBG[2][i];
+                    if(image.getNumCompositions() >= 3) {
+                        rgb[0] = tileRBG[0][i];
+                        rgb[1] = tileRBG[1][i];
+                        rgb[2] = tileRBG[2][i];
+                    } else {
+                        /** we do not use the alpha channel at the kbnl; maybe grayscale though **/
+                        rgb[0] = tileRBG[0][i];
+                        rgb[1] = tileRBG[0][i];
+                        rgb[2] = tileRBG[0][i];
+                    }
                     try {
                         img.getRaster().setPixel(outLeft + x - startX, outTop + y - startY, rgb);
                     } catch(ArrayIndexOutOfBoundsException e) {
@@ -107,7 +145,15 @@ public class JP2Reader {
 
     public BufferedImage getRegion(JPEG2000Image image, int reduction, int x, int y, int w, int h) {
         if(reduction < 0) { reduction = 0; }
-        if(reduction > image.getMaxReduction()) { reduction = image.getMaxReduction(); }
+        else if(reduction > image.getMaxReduction()) { reduction = image.getMaxReduction(); }
+        if(x > image.getWidth(reduction)) { x = image.getWidth(reduction); }
+        if(y > image.getHeight(reduction)) { y = image.getHeight(reduction); }
+        if(x + w > image.getWidth(reduction)) { w = image.getWidth(reduction) - x; }
+        if(y + h > image.getHeight(reduction)) { h = image.getHeight(reduction) - y; }
+
+        if(w <= 0|| h <= 0) {
+            return new BufferedImage(1,1, BufferedImage.TYPE_INT_RGB);
+        }
 
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 
@@ -167,7 +213,7 @@ public class JP2Reader {
             }
 
             start = new Date().getTime();
-            BufferedImage outImg1 = reader.getRegion(image, 1, 250, 135, 850, 400);
+            BufferedImage outImg1 = reader.getRegion(image, 1, 250, 135, 180, 400);
             System.out.println("Get region ms: " + ((new Date().getTime()) - start));
             try {
                 ImageIO.write(outImg1, "jpg", new File("test_region.jpg"));
