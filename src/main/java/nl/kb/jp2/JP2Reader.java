@@ -34,6 +34,7 @@ package nl.kb.jp2;
 import org.apache.commons.io.IOUtils;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -137,12 +138,68 @@ public class JP2Reader {
     }
 
 
+    /**
+     * Get the full JP2 image at requested at the requested reduction level.
+     * @param image the image object representing the image
+     * @param reduction the requested reduction level (will be cut off at max reduction level)
+     * @return buffered image object containing the full image
+     */
     public BufferedImage getFullImage(JPEG2000Image image, int reduction) {
         if(reduction < 0) { reduction = 0; }
         if(reduction > image.getMaxReduction()) { reduction = image.getMaxReduction(); }
         return getRegion(image, reduction, 0, 0, image.getWidth(reduction), image.getHeight(reduction));
     }
 
+    /**
+     * Get the full JP2 image at requested scale.
+     * @param image the image object representing the image
+     * @param scale the requested rescale factor
+     * @return buffered image object containing the full image
+     */
+    public BufferedImage getFullImage(JPEG2000Image image, double scale) {
+        return getRegion(image, scale, 0, 0, (int) Math.ceil(image.getWidth(0) * scale), (int) Math.ceil(image.getHeight(0) * scale));
+    }
+
+    /**
+     * Get a region of a JP2 image at the requested scale.
+     * @param image the image object representing the image
+     * @param scale the requested rescale factor
+     * @param x the x-position on the image after resize to scale
+     * @param y the y-position on the image after resize to scale
+     * @param w the width after resize
+     * @param h the height after resize
+     * @return buffered image object containing the selected region
+     */
+    public BufferedImage getRegion(JPEG2000Image image, double scale, int x, int y, int w, int h) {
+        int reduction = image.getBestReductionFactorForScale(scale);
+        double jp2scale = JPEG2000Image.reduce(1.0, reduction);
+        double factor = jp2scale / scale;
+        int x1 = (int) Math.ceil(factor * (double)x);
+        int y1 = (int) Math.ceil(factor * (double)y);
+        int w1 = (int) Math.ceil(factor * (double)w);
+        int h1 = (int) Math.ceil(factor * (double)h);
+        BufferedImage img = getRegion(image, reduction, x1, y1, w1, h1);
+        BufferedImage out = new BufferedImage(w, h, img.getType());
+        Graphics2D g = out.createGraphics();
+        g.drawImage(img, 0, 0, w, h, null);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING,RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+
+        return out;
+    }
+
+
+    /**
+     * Get a region of a JP2 image at a supported resolution reduction level.
+     * @param image the image object representing the image (TODO: check for successful load)
+     * @param reduction the requested reduction level (will be cut off at max reduction level)
+     * @param x the x-position on the image after resize to reduction level
+     * @param y the y-position on the image after resize to reduction level
+     * @param w the width after resize
+     * @param h the height after resize
+     * @return buffered image object containing the selected region
+     */
     public BufferedImage getRegion(JPEG2000Image image, int reduction, int x, int y, int w, int h) {
         if(reduction < 0) { reduction = 0; }
         else if(reduction > image.getMaxReduction()) { reduction = image.getMaxReduction(); }
@@ -193,6 +250,10 @@ public class JP2Reader {
         return img;
     }
 
+    /**
+     * TODO: move to unit tests, parse the command line
+     * @param args
+     */
     public static void main(String args[]) {
         String filename = args[1];
         long start = new Date().getTime();
@@ -204,8 +265,8 @@ public class JP2Reader {
             System.out.println(image);
 
             start = new Date().getTime();
-            BufferedImage outImg = reader.getFullImage(image, Integer.parseInt(args[2]));
-            System.out.println("Decompile full image ms: " + ((new Date().getTime()) - start));
+            BufferedImage outImg = reader.getFullImage(image, 0);
+            System.out.println("Decompile full image no reduction ms: " + ((new Date().getTime()) - start));
             try {
                 ImageIO.write(outImg, "jpg", new File("test.jpg"));
             } catch(IOException e) {
@@ -221,6 +282,32 @@ public class JP2Reader {
                 e.printStackTrace();
             }
 
+            start = new Date().getTime();
+            BufferedImage outImg2 = reader.getRegion(image, 0.5d, 250, 135, 180, 400);
+            System.out.println("Get scaled DOWN region ms: " + ((new Date().getTime()) - start));
+            try {
+                ImageIO.write(outImg2, "jpg", new File("test_region_scaled.jpg"));
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
+
+            start = new Date().getTime();
+            BufferedImage outImg4 = reader.getRegion(image, 4.3d, 450, 450, 180, 400);
+            System.out.println("Get scaled UP region ms: " + ((new Date().getTime()) - start));
+            try {
+                ImageIO.write(outImg4, "jpg", new File("test_region_scaled_up.jpg"));
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
+
+            start = new Date().getTime();
+            BufferedImage outImg3 = reader.getFullImage(image, 0.01d);
+            System.out.println("Get scaled full image (s=0.01) ms: " + ((new Date().getTime()) - start));
+            try {
+                ImageIO.write(outImg3, "jpg", new File("test_full_scaled.jpg"));
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
 
         } else {
             System.err.println("failed to load file: " + filename);

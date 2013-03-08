@@ -66,6 +66,17 @@ public class JPEG2000Image {
         return status == HEADER_SUCCESS;
     }
 
+    public int getBestReductionFactorForScale(double scale) {
+        int redux = maxReduction - 1;
+        double scaleAtRedux = reduce(1.0, redux);
+        while(scale > scaleAtRedux && redux > 0) {
+            scaleAtRedux *= 2.0;
+            redux--;
+        }
+
+        return redux;
+    }
+
     public int getTilesX() {
         return tilesX;
     }
@@ -82,7 +93,14 @@ public class JPEG2000Image {
         return maxReduction - 1;
     }
 
-    private int reduce(int num, int reduction) {
+    public static double reduce(double num, int reduction) {
+        for(int i = 0; i < reduction; ++i) {
+            num /= 2;
+        }
+        return num;
+    }
+
+    public static int reduce(int num, int reduction) {
         for(int i = 0; i < reduction; ++i) {
             num = (int) Math.ceil(((double) num) / 2.0d);
         }
