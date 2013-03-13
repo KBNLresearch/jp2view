@@ -16,6 +16,7 @@ Build and install openjpeg
 
 5. sudo make install
 
+6. sudo ldconfig (alternatively set LD_LIBRARY_PATH to location of libopenjp2.so)
 
 Build this project
 ----
