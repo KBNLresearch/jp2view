@@ -64,7 +64,7 @@ public class JP2Reader {
         }
     }
 
-    private native int[] getJp2Specs(String filename);
+    public native int[] getJp2Specs(String filename);
     private native int[] getTile(String filename, int tileIndex, int reduction, int[][] pixels);
 
 
@@ -292,7 +292,7 @@ public class JP2Reader {
             }
 
             start = new Date().getTime();
-            BufferedImage outImg4 = reader.getRegion(image, 4.3d, 450, 450, 180, 400);
+            BufferedImage outImg4 = reader.getRegion(image, 1.5d, 0, 0, 1500, 800);
             System.out.println("Get scaled UP region ms: " + ((new Date().getTime()) - start));
             try {
                 ImageIO.write(outImg4, "jpg", new File("test_region_scaled_up.jpg"));
